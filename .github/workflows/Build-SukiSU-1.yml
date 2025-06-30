@@ -38,7 +38,7 @@ on:
       sukisu_tag:
         description: "自定义版本来源后缀（如:CX）"
         required: false
-        default: "CX"
+        default: "cx"
 jobs:
   build:
     runs-on: ubuntu-latest
