@@ -21,7 +21,7 @@ on:
       KERNEL_NAME:
         description: "修改内核名称"
         required: true
-        default: '-ace3-c15.830-cx'
+        default: '-ace3-c15.851-cx'
       SUSFS_ENABLED:
         description: "添加 SUSFS"
         required: true
