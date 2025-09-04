@@ -79,7 +79,7 @@ on:
       KERNEL_NAME:
         description: "修改内核名称"
         required: true
-        default: '-ace3-c15.830-cx'
+        default: '-ace3-c15.851-cx'
       BUILD_METHOD:
         type: choice
         description: "编译方式"
