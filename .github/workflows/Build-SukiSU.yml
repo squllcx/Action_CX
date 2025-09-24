@@ -74,10 +74,6 @@ on:
          - "5.15"
          - "6.1"
          - "6.6"
-      KERNEL_NAME:
-        description: "修改内核名称"
-        required: true
-        default: "-ace3-c15.851-cx"
       BUILD_METHOD:
         type: choice
         description: "编译方式"
@@ -86,6 +82,10 @@ on:
         options:
           - gki
           - perf
+      KERNEL_NAME:
+        description: "修改内核名称"
+        required: true
+        default: '-ace3-c15.851-cx'
       VFS:
         type: boolean
         description: "是否启用手动钩子？"
