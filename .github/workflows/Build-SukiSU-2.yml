@@ -1,10 +1,9 @@
 name: Build OnePlus Ace3 Auto
 on:
   workflow_dispatch:
-  schedule:
+   schedule:
     - cron: "0 23 * * *"
-
-    inputs:
+   inputs:
       CPU:
         description: "分支"
         required: true
