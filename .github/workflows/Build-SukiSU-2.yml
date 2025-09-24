@@ -1,6 +1,9 @@
 name: Build OnePlus Ace3 Auto
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 23 * * *'  # UTC时间23点（北京时间次日7点）
+
     inputs:
       CPU:
         description: "分支"
@@ -39,8 +42,6 @@ on:
         description: "自定义版本来源后缀（如:CX）"
         required: false
         default: "cx"
-  schedule:
-    - cron: "0 22 * * *"
 
 jobs:
   build:
