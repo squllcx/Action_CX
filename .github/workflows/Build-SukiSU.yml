@@ -42,7 +42,6 @@ on:
           - oneplus_13
           - oneplus_13t
           - oneplus_ace5_pro
-          - oneplus_13t
           - GitHub有bug可能不显示最后一项,误使用此项
       CPUD:
         type: choice
@@ -55,7 +54,6 @@ on:
           - kalama
           - pineapple
           - sun
-          - taro
       ANDROID_VERSION:
         type: choice
         description: "内核安卓版本"
@@ -103,7 +101,13 @@ on:
         description: "是否启用添加更多的ZRAM算法？"
         required: true
         default: false
-
+      # ====================== 新增部分: DOCKER_SUPPORT ======================
+      DOCKER_SUPPORT:
+        type: boolean
+        description: "是否启用Docker支持？"
+        required: true
+        default: false
+      # =====================================================================
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -142,7 +146,9 @@ jobs:
           echo "Selected ZRAM: ${{ github.event.inputs.ZRAM }}"
           echo "Selected VFS: ${{ github.event.inputs.VFS }}"
           echo "Selected KPM: ${{ github.event.inputs.KPM }}"
-
+          # ====================== 新增部分: 显示DOCKER_SUPPORT ======================
+          echo "Selected DOCKER_SUPPORT: ${{ github.event.inputs.DOCKER_SUPPORT }}"
+          # ========================================================================
       - name: Install repo tool
         run: |
           curl https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
@@ -276,7 +282,34 @@ jobs:
           echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> "$CONFIG_FILE"
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> "$CONFIG_FILE"
           fi
-
+          
+          # ====================== 新增部分: Docker 配置 ======================
+          # Docker config - 必须在 SUSFS 配置之后、Remove check_defconfig 之前添加
+          if [ "${{ github.event.inputs.DOCKER_SUPPORT }}" = "true" ]; then
+            echo "CONFIG_NAMESPACES=y" >> "$CONFIG_FILE"
+            echo "CONFIG_NET_NS=y" >> "$CONFIG_FILE"
+            echo "CONFIG_PID_NS=y" >> "$CONFIG_FILE"
+            echo "CONFIG_IPC_NS=y" >> "$CONFIG_FILE"
+            echo "CONFIG_UTS_NS=y" >> "$CONFIG_FILE"
+            echo "CONFIG_CGROUPS=y" >> "$CONFIG_FILE"
+            echo "CONFIG_CGROUP_CPUACCT=y" >> "$CONFIG_FILE"
+            echo "CONFIG_CGROUP_DEVICE=y" >> "$CONFIG_FILE"
+            echo "CONFIG_CGROUP_FREEZER=y" >> "$CONFIG_FILE"
+            echo "CONFIG_CGROUP_SCHED=y" >> "$CONFIG_FILE"
+            echo "CONFIG_CPUSETS=y" >> "$CONFIG_FILE"
+            echo "CONFIG_MEMCG=y" >> "$CONFIG_FILE"
+            echo "CONFIG_KEYS=y" >> "$CONFIG_FILE"
+            echo "CONFIG_VETH=y" >> "$CONFIG_FILE"
+            echo "CONFIG_BRIDGE=y" >> "$CONFIG_FILE"
+            echo "CONFIG_NF_NAT_IPV4=y" >> "$CONFIG_FILE"
+            echo "CONFIG_IP_NF_FILTER=y" >> "$CONFIG_FILE"
+            echo "CONFIG_IP_NF_IPTABLES=y" >> "$CONFIG_FILE"
+            echo "CONFIG_IP_NF_NAT=y" >> "$CONFIG_FILE"
+            echo "CONFIG_NF_NAT=y" >> "$CONFIG_FILE"
+            echo "CONFIG_POSIX_MQUEUE=y" >> "$CONFIG_FILE"
+          fi
+          # ==================================================================
+          
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
 
@@ -450,8 +483,9 @@ jobs:
       - name: Set suffix
         id: suffix
         run: |
-          echo "value=${{ github.event.inputs.KPM == 'true' && '_KPM' || '' }}${{ github.event.inputs.VFS == 'true' && '_VFS' || '' }}${{ github.event.inputs.ZRAM == 'true' && '_LZ4KD' || '' }}" >> $GITHUB_OUTPUT
-
+          # ====================== 修改部分: 添加DOCKER标识 ======================
+          echo "value=${{ github.event.inputs.KPM == 'true' && '_KPM' || '' }}${{ github.event.inputs.VFS == 'true' && '_VFS' || '' }}${{ github.event.inputs.ZRAM == 'true' && '_LZ4KD' || '' }}${{ github.event.inputs.DOCKER_SUPPORT == 'true' && '_DOCKER' || '' }}" >> $GITHUB_OUTPUT
+          # =====================================================================
       - name: Remove _uv suffix from FEIL
         id: feil_clean
         run: |
