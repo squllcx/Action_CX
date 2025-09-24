@@ -1,6 +1,6 @@
 name: Build OnePlus_SukiSU Ultra All CX
 on:
-  repository_dispatch:
+  workflow_dispatch:
     inputs:
       CPU:
         type: choice
