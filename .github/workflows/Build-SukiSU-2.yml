@@ -6,12 +6,12 @@ on:
         type: choice
         description: "配置文件"
         required: true
-        default: oneplus_ace3_v
+        default: oneplus_ace3_b
         options:
           - oneplus_nord_ce4_lite_5g_v
           - oneplus_nord_ce4_v
-          - oneplus_nord_4_v
-          - oneplus_ace_3v_v
+          - oneplus_nord_4_b
+          - oneplus_ace_3v_b
           - oneplus_10_pro_v
           - oneplus_10t_v
           - oneplus_11r_v
@@ -19,17 +19,19 @@ on:
           - oneplus_ace_pro_v
           - oneplus_11_v
           - oneplus_12r_v
+          - oneplus_12r_b
           - oneplus_ace2_pro_v
           - oneplus_ace3_v
+          - oneplus_ace3_b
           - oneplus_open_v
           - oneplus_open_b
-          - oneplus_12_v
-          - oneplus_13r
-          - oneplus_ace3_pro_v
-          - oneplus_ace5
-          - oneplus_pad_pro_v
-          - oneplus_pad2_v
-          - oneplus_nord_5
+          - oneplus_12_b
+          - oneplus_13r_b
+          - oneplus_ace3_pro_b
+          - oneplus_ace5_b
+          - oneplus_pad_pro_b
+          - oneplus_pad2_b
+          - oneplus_nord_5_b
           - oneplus_ace5_pro_b
           - oneplus_13_b
           - oneplus_13t_b
@@ -39,30 +41,53 @@ on:
           - oneplus_ace5_ultra
           - oneplus_ace_6
           - oneplus_15
+      MANAGER_SOURCE:
+        type: choice
+        description: "管理器调用方向"
+        required: true
+        default: OFFICIAL
+        options:
+          - OFFICIAL
+          - SPOOF
+          - MIUIX
       SUSFS_CI:
         type: choice
-        description: "下载SUSFS模块调用方式"
+        description: "SUSFS模块下载调用方向"
         required: true
         default: NoN
         options:
           - CI
           - Release
           - NoN
-      KSU_META:
+      SUSFS_META:
         type: string
-        description: "分支名(必填)/自定义版本标识(留空不修改)/调整提交hash(留空不修改)"
+        description: "回退SUSFS到指定哈希版本"
         required: false
-        default: "susfs-main/cx/"
+        default: ""
+      DYNAMIC_REPO:
+        type: string
+        description: "动态清单仓库所有者"
+        required: true
+        default: "squllcx"
       BUILD_TIME:
         type: string
         description: "自定义构建时间(输入F使用当前UTC时间)"
         required: false
-        default: "Thu Nov 6 12:00:00 UTC 2025"
+        default: "Mon Dec 1 12:00:00 UTC 2025"
+      KSU_META:
+        type: string
+        description: "分支名(必填)/自定义版本标识(留空不修改)/回退分支提交哈希版本(留空不修改)"
+        required: false
+        default: "susfs-main/cx/"
       SUFFIX:
         type: string
-        description: "自定义内核后缀 (不输入使用随机字符串)"
+        description: "自定义内核后缀(不输入使用随机字符串)"
         required: false
-        default: "c15.851-cx"
+        default: "c16.300-cx"
+      SUBLEVEL:
+        description: "自定义内核等级欺骗(SUBLEVEL)"
+        required: false
+        default: ""
       FAST_BUILD:
         type: boolean
         description: "是否启用极速构建？"
@@ -78,9 +103,24 @@ on:
         description: "是否启用关键分区写入保护模块(BBG)？"
         required: true
         default: true
+      NETFILTER:
+        type: boolean
+        description: "是否启用网络功能拓展(NETFILTER)？"
+        required: true
+        default: true
+      BBR_ECN:
+        type: boolean
+        description: "是否启用网络优化算法(BBR+ECN)？"
+        required: true
+        default: true
+      SUSFS_DEV:
+        type: boolean
+        description: "是否拉取SUSFS-DEV分支？"
+        required: true
+        default: false
       SCHED:
         type: boolean
-        description: "是否添加风驰驱动？"
+        description: "是否添加风驰驱动1.0？"
         required: true
         default: false
       ZRAM:
@@ -133,9 +173,10 @@ jobs:
           echo "FILE_BASE=$FILE_BASE" >> $GITHUB_ENV
 
           # 动态调用源码清单仓库，仓库优先级：1️⃣ OnePlusOSS → 2️⃣ Numbersf(可换)
+          DYNAMIC_REPO_INPUT="${{ github.event.inputs.DYNAMIC_REPO }}"
           declare -A REPOS
           REPOS["OnePlusOSS"]="https://api.github.com/repos/OnePlusOSS/kernel_manifest"
-          REPOS["Dynamic"]="https://api.github.com/repos/Numbersf/kernel_manifest"
+          REPOS["Dynamic"]="https://api.github.com/repos/${DYNAMIC_REPO_INPUT}/kernel_manifest"
 
           FOUND_REPO=""
           FOUND_BRANCH=""
@@ -230,6 +271,9 @@ jobs:
           echo "Selected ANDROID_VERSION: ${{ env.ANDROID_VERSION }}"
           echo "Selected BUILD_METHOD: ${{ env.BUILD_METHOD }}"
           echo "Selected FILE: ${{ github.event.inputs.FILE }}"
+          echo "Selected MANAGER_SOURCE: ${{ github.event.inputs.MANAGER_SOURCE }}"
+          echo "Selected SUSFS_CI: ${{ github.event.inputs.SUSFS_CI }}"
+          echo "Custom SUSFS_META: ${{ github.event.inputs.SUSFS_META }}"
           echo "Custom KSU_META: ${{ github.event.inputs.KSU_META }}"
           echo "Custom BUILD_TIME: ${{ github.event.inputs.BUILD_TIME }}"
           echo -n "BUILD_TIME Unicode: "
@@ -237,9 +281,11 @@ jobs:
           echo "Custom SUFFIX: ${{ github.event.inputs.SUFFIX }}"
           echo -n "SUFFIX Unicode: "
           python3 -c "print(''.join(f'U+{ord(c):04X} ' for c in '''${{ github.event.inputs.SUFFIX }}'''))"
-          echo "Selected SUSFS_CI: ${{ github.event.inputs.SUSFS_CI }}"
-          echo "Selected LSM: ${{ github.event.inputs.LSM }}"
           echo "Selected KPM: ${{ github.event.inputs.KPM }}"
+          echo "Selected LSM: ${{ github.event.inputs.LSM }}"
+          echo "Selected NETFILTER: ${{ github.event.inputs.NETFILTER }}"
+          echo "Selected BBR_ECN: ${{ github.event.inputs.BBR_ECN }}"
+          echo "Selected SUSFS_DEV: ${{ github.event.inputs.SUSFS_DEV }}"
           echo "Selected FAST_BUILD: ${{ github.event.inputs.FAST_BUILD }}"
           echo "Selected SCHED: ${{ github.event.inputs.SCHED }}"
           echo "Selected ZRAM: ${{ github.event.inputs.ZRAM }}"
@@ -353,7 +399,13 @@ jobs:
           ORIG_VERSION=$(awk '/^VERSION =/ {v=$3} /^PATCHLEVEL =/ {p=$3} /^SUBLEVEL =/ {s=$3} END {print v"."p"."s}' ./common/Makefile)
 
           # 强制修改 SUBLEVEL(内核等级)，默认关闭
-          # sed -i 's/^SUBLEVEL[[:space:]]*=[[:space:]]*.*/SUBLEVEL = 99/' ./common/Makefile
+          SUBLEVEL_INPUT="${{ github.event.inputs.SUBLEVEL }}"
+          if [ -n "$SUBLEVEL_INPUT" ]; then
+            echo "修改 SUBLEVEL 为 $SUBLEVEL_INPUT"
+            sed -i "s/^\(SUBLEVEL[[:space:]]*=[[:space:]]*\).*/\1$SUBLEVEL_INPUT/" ./common/Makefile
+          else
+            echo "未指定 SUBLEVEL，保持默认"
+          fi
 
           # 读取修改后的版本
           NEW_VERSION=$(awk '/^VERSION =/ {v=$3} /^PATCHLEVEL =/ {p=$3} /^SUBLEVEL =/ {s=$3} END {print v"."p"."s}' ./common/Makefile)
@@ -365,6 +417,11 @@ jobs:
             echo "Kernel Version:$ORIG_VERSION No changes"
             echo "TKERNEL_VERSION=$ORIG_VERSION" >> $GITHUB_ENV
           fi
+
+          # 内核版本的数字转换(对比用)
+          echo "KV1=${BRANCH#*-}"       | cut -d. -f1 >> $GITHUB_ENV
+          echo "KV2=${BRANCH#*-}"       | tr -d '.' >> $GITHUB_ENV
+          echo "KV3=${NEW_VERSION}"     | tr -d '.' >> $GITHUB_ENV
 
       # 自定义内核后缀
       - name: Custom Kernel Suffix if set
@@ -470,16 +527,16 @@ jobs:
         run: |
           cd kernel_workspace/kernel_platform
 
-          META="${{ github.event.inputs.KSU_META }}"
+          KSU_META="${{ github.event.inputs.KSU_META }}"
 
           # 必须包含两个分隔符（至少三个字段）
-          if [[ "$(grep -o '/' <<< "$META" | wc -l)" -lt 2 ]]; then
+          if [[ "$(grep -o '/' <<< "$KSU_META" | wc -l)" -lt 2 ]]; then
             echo "错误: KSU_META 参数缺少必要的分隔符 '/'，格式应为: 分支名/自定义标识(可省略)/提交hash(可省略)"
             exit 10
           fi
 
           # 解析字段：分支 / 自定义标识 / 手动 hash
-          IFS='/' read -r BRANCH_NAME CUSTOM_TAG MANUAL_HASH <<< "$META"
+          IFS='/' read -r BRANCH_NAME CUSTOM_TAG MANUAL_HASH <<< "$KSU_META"
 
           echo "分支名: $BRANCH_NAME"
           [[ -n "$CUSTOM_TAG" ]] && echo "自定义版本标识: $CUSTOM_TAG" || echo "自定义版本标识: 未启用"
@@ -551,7 +608,11 @@ jobs:
           FILE: ${{ github.event.inputs.FILE }}
         run: |
           cd kernel_workspace
-          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ env.KANDROID_VERSION }}-${{ env.KERNEL_VERSION }}
+          SUSFS_META="${{ github.event.inputs.SUSFS_META }}"
+          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ env.KANDROID_VERSION }}-${{ env.KERNEL_VERSION }}${{ github.inputs.SUSFS_DEV == 'true' && '-dev' || '' }}
+          cd susfs4ksu
+          [ -n "$SUSFS_META" ] && git checkout "$SUSFS_META" || echo "SUSFS_META 为空，使用最新上游 SUSFS"
+          cd ..
           git clone https://github.com/ShirkNeko/SukiSU_patch.git
           git clone https://github.com/Numbersf/Action-Build.git
           cd kernel_platform
@@ -625,23 +686,18 @@ jobs:
             fi
           fi
 
-      - name: Apply Hide Stuff Patches
-        run: |
-          cd kernel_workspace/kernel_platform/common
-          cp ../../SukiSU_patch/69_hide_stuff.patch ./
-          echo "正在打隐藏应用补丁"
-          patch -p1 -F 3 < 69_hide_stuff.patch
-          echo "隐藏应用_patch完成"
-
       # OGKI转换GKI，无需修改 dtbo 开机
       - name: Apply Convert HMBIRD_OGKI to HMBIRD_GKI
-        if: ${{ env.KERNEL_VERSION == '6.6' && github.event.inputs.SCHED == 'false' }}
+        if: ${{ fromJSON(env.KV1) >= 6 && fromJSON(env.KV2) >= 66 && github.event.inputs.SCHED == 'false' }}
         run: |
           cd kernel_workspace/kernel_platform/common
-          if [ -d "./kernel/sched/hmbird" ]; then
-            echo "源码中风驰补丁已经存在，启用二次回退"
-            exit 0
-          fi
+          for p in ./kernel/sched/hmbird* ./vendor/oplus/kernel/cpu/sched_ext/hmbird*; do
+            [ -d "$p" ] && {
+              echo "源码中风驰代码已经存在，启用二次回退"
+              exit 0
+            }
+          done
+
           sed -i '1iobj-y += hmbird_patch.o' drivers/Makefile
           wget https://github.com/Numbersf/Action-Build/raw/SukiSU-Ultra/patches/hmbird_patch.patch
           echo "正在打OGKI转换GKI补丁"
@@ -706,12 +762,7 @@ jobs:
           echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> "$CONFIG_FILE"
           echo "CONFIG_KSU_SUSFS_SUS_MAP=y" >> "$CONFIG_FILE"
           echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> "$CONFIG_FILE"
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y" >> "$CONFIG_FILE"
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y" >> "$CONFIG_FILE"
           echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> "$CONFIG_FILE"
-          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n" >> "$CONFIG_FILE"
-          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> "$CONFIG_FILE"
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> "$CONFIG_FILE"
           echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> "$CONFIG_FILE"
           echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> "$CONFIG_FILE"
           echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> "$CONFIG_FILE"
@@ -722,19 +773,19 @@ jobs:
           echo "CONFIG_TMPFS_XATTR=y" >> "$CONFIG_FILE"
           echo "CONFIG_TMPFS_POSIX_ACL=y" >> "$CONFIG_FILE"
 
-          # BBR配置*
-          echo "CONFIG_TCP_CONG_ADVANCED=y" >> "$CONFIG_FILE"
-          echo "CONFIG_TCP_CONG_BBR=y" >> "$CONFIG_FILE"
-          echo "CONFIG_NET_SCH_FQ=y" >> "$CONFIG_FILE"
-          echo "CONFIG_TCP_CONG_BIC=n" >> "$CONFIG_FILE"
-          echo "CONFIG_TCP_CONG_WESTWOOD=n" >> "$CONFIG_FILE"
-          echo "CONFIG_TCP_CONG_HTCP=n" >> "$CONFIG_FILE"
-
-          # ECN配置*
-          echo "CONFIG_IP_ECN=y" >> "$CONFIG_FILE"
-          echo "CONFIG_TCP_ECN=y" >> "$CONFIG_FILE"
-          echo "CONFIG_IPV6_ECN=y" >> "$CONFIG_FILE"
-          echo "CONFIG_IP_NF_TARGET_ECN=y" >> "$CONFIG_FILE"
+          # BBR & ECN配置*
+          if [ "${{ github.event.inputs.BBR_ECN }}" = "true" ]; then
+            echo "CONFIG_TCP_CONG_ADVANCED=y" >> "$CONFIG_FILE"
+            echo "CONFIG_TCP_CONG_BBR=y" >> "$CONFIG_FILE"
+            echo "CONFIG_NET_SCH_FQ=y" >> "$CONFIG_FILE"
+            echo "CONFIG_TCP_CONG_BIC=n" >> "$CONFIG_FILE"
+            echo "CONFIG_TCP_CONG_WESTWOOD=n" >> "$CONFIG_FILE"
+            echo "CONFIG_TCP_CONG_HTCP=n" >> "$CONFIG_FILE"
+            echo "CONFIG_IP_ECN=y" >> "$CONFIG_FILE"
+            echo "CONFIG_TCP_ECN=y" >> "$CONFIG_FILE"
+            echo "CONFIG_IPV6_ECN=y" >> "$CONFIG_FILE"
+            echo "CONFIG_IP_NF_TARGET_ECN=y" >> "$CONFIG_FILE"
+          fi
 
           # ZRAM配置*
           if [ "${{ github.event.inputs.ZRAM }}" = "true" ]; then
@@ -752,7 +803,7 @@ jobs:
           fi
 
           # IPSET & IPv6_NAT配置*
-          if [[ "${CPU}" == sm* ]]; then
+          if [[ "${CPU}" == sm* && "${{ github.event.inputs.NETFILTER }}" == "true" ]]; then
             echo "CONFIG_BPF_STREAM_PARSER=y" >> "$CONFIG_FILE"
             echo "CONFIG_NETFILTER_XT_MATCH_ADDRTYPE=y" >> "$CONFIG_FILE"
             echo "CONFIG_NETFILTER_XT_SET=y" >> "$CONFIG_FILE"
@@ -782,6 +833,7 @@ jobs:
           sed -i 's/check_defconfig//' ./build.config.gki
 
       - name: Fix IPv6_NAT Error
+        if: ${{ github.event.inputs.NETFILTER == 'true' }}
         run: |
           cd kernel_workspace/kernel_platform/common
           if [[ "${CPU}" == sm* ]]; then
@@ -998,23 +1050,42 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          MANAGER_SOURCE="${{ github.event.inputs.MANAGER_SOURCE }}"
+          case "$MANAGER_SOURCE" in
+            MIUIX)
+              BRANCH="miuix"
+              ARTIFACT_NAME="Manager"
+              ;;
+            SPOOF)
+              BRANCH="main"
+              ARTIFACT_NAME="Spoofed-Manager"
+              ;;
+            OFFICIAL|*)
+              BRANCH="main"
+              ARTIFACT_NAME="Manager"
+              ;;
+          esac
+          echo "Using branch: $BRANCH"
+          echo "Downloading artifact: $ARTIFACT_NAME"
           run_id=$(gh api \
-            "repos/SukiSU-Ultra/SukiSU-Ultra/actions/workflows/build-manager.yml/runs?branch=main&status=success&per_page=1" \
+            "repos/SukiSU-Ultra/SukiSU-Ultra/actions/workflows/build-manager.yml/runs?branch=$BRANCH&status=success&per_page=1" \
             --jq '.workflow_runs[0].id' || echo "")
+
           if [[ -z "$run_id" ]]; then
-            echo "No successful workflow run found. Skipping artifact download."
-          else
-            artifact_url=$(gh api \
-              "repos/SukiSU-Ultra/SukiSU-Ultra/actions/runs/$run_id/artifacts" | \
-              jq -r '.artifacts[] | select(.name == "Manager") | .archive_download_url' | head -n1)
-            if [[ -z "$artifact_url" ]]; then
-              echo "No 'Manager' artifact found in run $run_id. Skipping download."
-            else
-              echo "Downloading from: $artifact_url"
-              curl -fL -H "Authorization: token $GITHUB_TOKEN" -o Manager.zip "$artifact_url"
-              unzip -j Manager.zip "*.apk" -d ./AnyKernel3/
-            fi
+            echo "No successful workflow run found on branch $BRANCH. Skipping download."
+            exit 0
           fi
+          artifact_url=$(gh api \
+            "repos/SukiSU-Ultra/SukiSU-Ultra/actions/runs/$run_id/artifacts" | \
+            jq -r ".artifacts[] | select(.name == \"$ARTIFACT_NAME\") | .archive_download_url" | head -n1)
+
+          if [[ -z "$artifact_url" ]]; then
+            echo "No artifact '$ARTIFACT_NAME' found in run $run_id. Skipping download."
+            exit 0
+          fi
+          echo "Downloading from: $artifact_url"
+          curl -fL -H "Authorization: token $GITHUB_TOKEN" -o "${ARTIFACT_NAME}.zip" "$artifact_url"
+          unzip -j "${ARTIFACT_NAME}.zip" "*.apk" -d ./AnyKernel3/
 
       - name: Set zip Suffix
         id: suffix
