@@ -98,7 +98,7 @@ on:
         type: boolean
         description: "是否启用内核模块(KPM)？"
         required: true
-        default: true
+        default: false
       LSM:
         type: boolean
         description: "是否启用关键分区写入保护模块(BBG)？"
@@ -114,11 +114,6 @@ on:
         description: "是否启用网络优化算法(BBR+ECN)？"
         required: true
         default: true
-      SUSFS_DEV:
-        type: boolean
-        description: "是否拉取SUSFS-DEV分支？"
-        required: true
-        default: false
       SCHED:
         type: boolean
         description: "是否添加风驰驱动1.0？"
@@ -127,6 +122,21 @@ on:
       ZRAM:
         type: boolean
         description: "是否添加更多ZRAM算法？"
+        required: true
+        default: false
+      SUSFS_DEV:
+        type: boolean
+        description: "是否拉取SUSFS-DEV分支？"
+        required: true
+        default: false
+      SPACE_NOCLEAN:
+        type: boolean
+        description: "是否停用空间清扫？"
+        required: true
+        default: false
+      BUILD_NOCCACHE:
+        type: boolean
+        description: "是否停用此次Ccache？"
         required: true
         default: false
 
@@ -144,6 +154,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Maximize Build Space
+        if: ${{ github.event.inputs.SPACE_NOCLEAN == 'false' }}
         uses: easimon/maximize-build-space@master
         with:
           root-reserve-mb: 8192
@@ -304,6 +315,7 @@ jobs:
           free -h
 
       - name: Set Cache Environment
+        if: ${{ github.event.inputs.BUILD_NOCCACHE == 'false' }}
         run: |
           echo "CCACHE_DIR=$HOME/.ccache_${{ github.event.inputs.FILE }}" >> $GITHUB_ENV
           mkdir -p "$HOME/.ccache_${{ github.event.inputs.FILE }}"
@@ -321,12 +333,14 @@ jobs:
           execute_install_scripts: true
 
       - name: Restore Ccache
+        if: ${{ github.event.inputs.BUILD_NOCCACHE == 'false' }}
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FILE }}-${{ env.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-16
 
       - name: Initialize Ccache
+        if: ${{ github.event.inputs.BUILD_NOCCACHE == 'false' }}
         run: |
           INIT_FLAG="${{ env.CCACHE_DIR }}/.ccache_initialized"
           if command -v ccache >/dev/null 2>&1; then
