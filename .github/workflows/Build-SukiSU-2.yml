@@ -82,7 +82,7 @@ on:
         type: string
         description: "自定义构建时间(输入F使用当前UTC时间)"
         required: false
-        default: "Mon Dec 1 12:00:00 UTC 2025"
+        default: "Thu Jan 1 12:00:00 UTC 2026"
       KSU_META:
         type: string
         description: "分支名(必填)/自定义版本标识(留空不修改)/回退分支提交哈希版本(留空不修改)"
@@ -126,7 +126,7 @@ on:
         type: boolean
         description: "是否添加Unicode零宽绕过修复与内存优化补丁？"
         required: true
-        default: true
+        default: false
       SCHED:
         type: boolean
         description: "是否添加风驰驱动1.0？"
@@ -746,14 +746,12 @@ jobs:
           patch -p1 --forward < "${PATCH_DIR}/optimized_mem_operations.patch"
           patch -p1 --forward < "${PATCH_DIR}/file_struct_8bytes_align.patch"
           patch -p1 --forward < "${PATCH_DIR}/reduce_cache_pressure.patch"
+          patch -p1 --forward < "${PATCH_DIR}/unicode-bypass_fix_all.patch"
           if [ "$KV1" -lt 6 ]; then
             patch -p1 --forward < "${PATCH_DIR}/clear_page_16bytes_align.patch"
-            echo "Patching unicode!"
             patch -p1 --forward < "${PATCH_DIR}/unicode_bypass_fix_6.1-.patch"
           else
             cat "${PATCH_DIR}/clear_page_16bytes_align.patch" | sed -e 's/SYM_FUNC_START_PI(clear_page)/SYM_FUNC_START_PI(__pi_clear_page)/' | patch -p1 -F3 --forward
-            echo "Patching unicode!"
-            patch -p1 --forward < "${PATCH_DIR}/unicode_bypass_fix_6.1+.patch"
           fi
 
       - name: Apply ZRAM
