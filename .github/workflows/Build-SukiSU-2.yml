@@ -746,12 +746,13 @@ jobs:
           patch -p1 --forward < "${PATCH_DIR}/optimized_mem_operations.patch"
           patch -p1 --forward < "${PATCH_DIR}/file_struct_8bytes_align.patch"
           patch -p1 --forward < "${PATCH_DIR}/reduce_cache_pressure.patch"
-          patch -p1 --forward < "${PATCH_DIR}/unicode-bypass_fix_all.patch"
           if [ "$KV1" -lt 6 ]; then
             patch -p1 --forward < "${PATCH_DIR}/clear_page_16bytes_align.patch"
-            patch -p1 --forward < "${PATCH_DIR}/unicode_bypass_fix_6.1-.patch"
+            patch -p1 --forward < "${PATCH_DIR}/unicode_bypass_fix_2_6.1-.patch" || true
+            patch -p1 --forward < "${PATCH_DIR}/unicode_bypass_fix_6.1-.patch" || true
           else
             cat "${PATCH_DIR}/clear_page_16bytes_align.patch" | sed -e 's/SYM_FUNC_START_PI(clear_page)/SYM_FUNC_START_PI(__pi_clear_page)/' | patch -p1 -F3 --forward
+            patch -p1 --forward < "${PATCH_DIR}/unicode_bypass_fix_6.1+.patch" || true
           fi
 
       - name: Apply ZRAM
